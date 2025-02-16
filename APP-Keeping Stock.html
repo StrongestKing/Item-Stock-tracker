@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Stock Tracker</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="manifest" href="manifest.json">
+</head>
+<body>
+    <header>
+        <h1>Item Stock Tracker</h1>
+        <input type="text" id="searchBar" placeholder="Search for items..." />
+    </header>
+    <main>
+        <div>
+            <input type="text" id="itemName" placeholder="Item name" />
+            <input type="number" id="itemQuantity" placeholder="Quantity" min="1" />
+            <input type="file" id="itemImage" accept="image/*" />
+            <button id="addItem">Add Item</button>
+        </div>
+        <ul id="itemList"></ul>
+    </main>
+    <script>
+        // Function to add an item
+        document.getElementById('addItem').addEventListener('click', () => {
+            const itemName = document.getElementById('itemName').value;
+            const itemQuantity = parseInt(document.getElementById('itemQuantity').value);
+            const itemImage = document.getElementById('itemImage').files[0];
+
+            if (itemName && itemQuantity > 0 && itemImage) {
+                const reader = new FileReader();
+
+                reader.onloadend = function () {
+                    // Get the Base64 image string
+                    const imageBase64 = reader.result;
+
+                    // Get the existing stock or initialize an empty array
+                    let stock = JSON.parse(localStorage.getItem('stock')) || [];
+
+                    // Add the new item to the stock
+                    stock.push({ name: itemName, quantity: itemQuantity, image: imageBase64 });
+
+                    // Save the updated stock to localStorage
+                    localStorage.setItem('stock', JSON.stringify(stock));
+                    displayStock();
+
+                    // Clear the input fields
+                    document.getElementById('itemName').value = '';
+                    document.getElementById('itemQuantity').value = '';
+                    document.getElementById('itemImage').value = '';
+                };
+
+                // Convert image to Base64 and call the onloadend method
+                reader.readAsDataURL(itemImage);
+            } else {
+                alert("Please enter valid item details and image.");
+            }
+        });
+
+        // Function to remove an item from the stock
+        function removeItem(index) {
+            let stock = JSON.parse(localStorage.getItem('stock')) || [];
+            stock.splice(index, 1);
+            localStorage.setItem('stock', JSON.stringify(stock));
+            displayStock();
+        }
+
+        // Function to display the stock list
+        function displayStock(searchQuery = '') {
+            const stock = JSON.parse(localStorage.getItem('stock')) || [];
+            const itemList = document.getElementById('itemList');
+            itemList.innerHTML = '';
+
+            // Filter stock based on search query
+            const filteredStock = stock.filter(item => item.name.toLowerCase().includes(searchQuery.toLowerCase()));
+
+            filteredStock.forEach((item, index) => {
+                const li = document.createElement('li');
+                const image = `<img src="${item.image}" alt="Item Image">`;
+                li.innerHTML = `${image}${item.name} (Quantity: ${item.quantity}) 
+                                <button onclick="removeItem(${index})">Remove</button>`;
+                itemList.appendChild(li);
+            });
+        }
+
+        // Event listener for search functionality
+        document.getElementById('searchBar').addEventListener('input', (event) => {
+            displayStock(event.target.value);
+        });
+
+        // Load and display stock data on page load
+        window.onload = displayStock;
+    </script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+        }
+
+        header {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 0;
+            text-align: center;
+        }
+
+        header input {
+            padding: 10px;
+            margin-top: 10px;
+            width: 80%;
+            font-size: 16px;
+        }
+
+        main {
+            padding: 20px;
+        }
+
+        input {
+            padding: 10px;
+            margin: 5px;
+            font-size: 16px;
+            border: 1px solid #ccc;
+        }
+
+        button {
+            padding: 10px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        ul {
+            padding: 0;
+            list-style: none;
+        }
+
+        li {
+            padding: 10px;
+            border: 1px solid #ddd;
+            margin: 5px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        li img {
+            width: 50px;
+            height: 50px;
+            object-fit: cover;
+            margin-right: 10px;
+        }
+    </style>
+    <script>
+        const CACHE_NAME = 'stock-tracker-cache-v1';
+        const urlsToCache = [
+            '/',
+            '/index.html',
+            '/style.css',
+            '/app.js',
+            '/manifest.json',
+            '/icons/icon-192x192.png',
+            '/icons/icon-512x512.png'
+        ];
+
+        // Install service worker and cache resources
+        self.addEventListener('install', (event) => {
+            event.waitUntil(
+                caches.open(CACHE_NAME).then((cache) => {
+                    return cache.addAll(urlsToCache);
+                })
+            );
+        });
+
+        // Fetch assets from cache or network
+        self.addEventListener('fetch', (event) => {
+            event.respondWith(
+                caches.match(event.request).then((cachedResponse) => {
+                    if (cachedResponse) {
+                        return cachedResponse;
+                    }
+                    return fetch(event.request);
+                })
+            );
+        });
+
+        // Activate service worker and clean up old caches
+        self.addEventListener('activate', (event) => {
+            const cacheWhitelist = [CACHE_NAME];
+            event.waitUntil(
+                caches.keys().then((cacheNames) => {
+                    return Promise.all(
+                        cacheNames.map((cacheName) => {
+                            if (!cacheWhitelist.includes(cacheName)) {
+                                return caches.delete(cacheName);
+                            }
+                        })
+                    );
+                })
+            );
+        });
+    </script>
+    <link rel="manifest" href="manifest.json">
+</body>
+</html>
